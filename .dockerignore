@@ -1,0 +1,16 @@
+# Không đưa dữ liệu/bí mật/venv host vào build context — image tự cài lại từ đầu,
+# dữ liệu thật chỉ đi vào container qua volume mount (xem docker-compose.yml).
+.venv/
+.camoufox_profile/
+downloads/
+queue.json
+auth.json
+.env
+*.log
+cron.log
+logs/
+/.runtime/
+__pycache__/
+.git/
+.claude/
+.claude-docker/

@@ -1,0 +1,49 @@
+# Chạy (đứng ở GỐC REPO): docker compose -f .docker/docker-compose.yml up -d --build
+#   (build 1 lần, lần sau chỉ cần `up -d`). Hoặc `cd .docker && docker compose up -d --build`.
+# Toàn bộ môi trường (Python, Camoufox, Xvfb, cron) nằm TRONG container — máy
+# host/server thật không cần cài gì cả, chỉ cần Docker.
+#
+# ⚠️ CHUẨN BỊ BẮT BUỘC 1 LẦN TRƯỚC KHI `up` (xem RUNBOOK B.1):
+#     cp .env.example .env && touch queue.json && mkdir -p .claude-docker
+# Thiếu `touch queue.json`, Docker sẽ tự bind-mount `./queue.json` thành 1 THƯ MỤC RỖNG
+# (không phải file) lúc TẠO container -> hỏng tới khi xoá tay. Compose/entrypoint không
+# cứu được (mount xảy ra TRƯỚC khi entrypoint.sh kịp chạy), chỉ báo lỗi rõ ràng.
+#
+# File này nằm trong .docker/ (không phải gốc repo) -> cố định project name (khỏi phụ
+# thuộc tên thư mục lúc suy ra mặc định) + mọi đường dẫn tương đối bên dưới (build.context,
+# volumes) đều tính TỪ VỊ TRÍ FILE NÀY (.docker/), nên phải lùi 1 cấp bằng "..".
+name: doc-crawler
+
+services:
+  crawler:
+    build:
+      context: ..                # gốc repo — Dockerfile COPY crawler.py/run.sh/... từ đây
+      dockerfile: .docker/Dockerfile
+      args:
+        # Khớp UID/GID của bạn trên host để tránh lệch quyền file trong downloads/
+        # (không bắt buộc — entrypoint đã tự chown khi container khởi động).
+        APP_UID: "${APP_UID:-1000}"
+        APP_GID: "${APP_GID:-1000}"
+    image: doc-crawler:latest
+    container_name: doc-crawler
+    restart: unless-stopped
+    # Browser cần /dev/shm lớn hơn mặc định của Docker (64MB) để không crash giữa chừng.
+    shm_size: "1gb"
+    environment:
+      - TZ=Asia/Ho_Chi_Minh
+    volumes:
+      - ../.env:/app/.env:ro
+      - ../queue.json:/app/queue.json
+      - ../downloads:/app/downloads
+      - ../logs:/app/logs
+      - ../.camoufox_profile:/app/.camoufox_profile
+      # Credential + config Claude CLI (đăng nhập 1 lần, dùng mãi; không nằm trong image).
+      - ../.claude-docker:/home/crawler/.claude
+      # Mã nguồn mount GHI ĐƯỢC, đè lên bản COPY trong image: khi AI (hoặc bạn) sửa code
+      # lúc cron lỗi thì sửa THẲNG vào repo trên host -> `git diff` xem/duyệt/revert được,
+      # và không mất khi dựng lại container. Bỏ 3 dòng này nếu muốn container chạy CỐ ĐỊNH
+      # đúng bản code đã build vào image (khi đó AI có sửa cũng mất sau lần build lại).
+      - ../crawler.py:/app/crawler.py
+      - ../run.sh:/app/run.sh
+      - ../notify.py:/app/notify.py
+    # Không publish port nào — crawler không phục vụ HTTP, chỉ chạy nền theo cron.

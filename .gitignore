@@ -1,0 +1,25 @@
+# Môi trường & session
+.venv/
+.camoufox_profile/
+
+# Dữ liệu tải & trạng thái (không đưa lên git)
+downloads/*
+!downloads/README.md
+queue.json
+queue/
+
+# Bí mật
+auth.json
+# credential/config của AI CLI dùng trong container (mount từ host)
+.claude-docker/
+
+# Log & rác sinh ra khi chạy
+*.log
+cron.log
+/.runtime/
+__pycache__/
+https:/
+logs/
+
+# Cấu hình bí mật
+.env

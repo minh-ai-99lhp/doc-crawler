@@ -1,0 +1,18 @@
+# Lịch crawl tự động trong container — tương đương RUNBOOK mục A.5 (23:59 mỗi
+# ngày, giờ VN). Đổi giờ: sửa dòng dưới rồi `docker compose build` lại.
+# --days-back 15: mỗi đêm quét CỬA SỔ TRƯỢT 15 ngày gần nhất (không chỉ hôm nay) để
+# bắt cả văn bản ban hành trước đó nhưng mới lên site (site upload trễ); queue.json
+# dedup nên văn bản đã tải KHÔNG tải lại — chỉ URL mới xuất hiện mới được thêm.
+# Định dạng /etc/cron.d: phút giờ ngày tháng thứ  user  lệnh
+#
+# cron KHÔNG kế thừa biến môi trường của tiến trình cha (PID 1) cho job nó chạy —
+# nhưng job ở đây gọi run.sh, mà run.sh TỰ nạp /app/.env (mount từ host). Nên mọi
+# công tắc vận hành (AI_ENABLED, API key, Telegram…) cứ đặt trong .env là
+# có tác dụng, KHÔNG cần build lại image. Cố tình KHÔNG khai AI_ENABLED ở đây: khai
+# ở đây sẽ ĐÈ .env (run.sh giữ biến đã set sẵn) -> mất quyền bật/tắt từ .env.
+# Claude CLI đã có sẵn trong image; credential do người vận hành quyết định lúc chạy
+# (xem RUNBOOK B.4).
+TZ=Asia/Ho_Chi_Minh
+CLAUDE_CONFIG_DIR=/home/crawler/.claude
+DISABLE_AUTOUPDATER=1
+59 23 * * * crawler cd /app && ./run.sh --days-back 15 >> /app/logs/cron.log 2>&1
